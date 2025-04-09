@@ -41,6 +41,7 @@ module rgmii_sfp_exchange(
 
 // 时钟和复位
 wire          clk_ila;                // ILA调试时钟62.5MHz
+wire          clk_ila1;               // ILA时钟
 wire          dclk;                   // 内部时钟100MHz
 wire          locked;                 // 时钟锁定
 wire          tx_clk_out;             // 发送时钟
@@ -79,33 +80,33 @@ wire          op_rh_wl;              // 读写选择
 wire   [4:0]  op_addr;               // 寄存器地址
 wire   [15:0] op_wr_data;            // 写数据
 
-// ILA实例化
-// ila_0 u_ila_0 (
-// 	.clk(clk_ila),                  // input wire clk 62.5MHZ
 
-// 	.probe0(gmii_rx_clk),           // input wire [0:0]  probe0 125MHZ 
-// 	.probe1(gmii_rx_dv),            // input wire [0:0]  probe1 
-// 	.probe2(gmii_rxd),              // input wire [7:0]  probe2 
-// 	.probe3(rgmii_axis_tvalid),           // input wire [0:0]  probe3 125MHZ
-// 	.probe4(rgmii_axis_tdata),            // input wire [63:0]  probe4 
-// 	.probe5(rgmii_axis_tlast),               // input wire [0:0]  probe5 
-// 	.probe6(rgmii_axis_tkeep),          // input wire [7:0]  probe6 
-// 	.probe7(rgmii_axis_tready),     // input wire [0:0]  probe7	
-// 	.probe8(tx_clk_out)             // input wire [0:0]  probe7	
-// );
+//ILA调试
+BUFG BUFG_inst (
+    .I            (clk_ila),      // 1-bit input: Clock input
+    .O            (clk_ila1)  // 1-bit output: Clock output
+);
 
-// ila_0 u_ila_0 (
-// 	.clk(clk_ila),                  // input wire clk 62.5MHZ
+//ILA实例化
+ila_1 u_ila_1 (
+    .clk(clk_ila1),              // input wire clk
 
-// 	.probe0(gmii_rx_dv),            // input wire [0:0]  probe1 
-// 	.probe1(rgmii_axis_tvalid),           // input wire [0:0]  probe3 125MHZ
-// 	.probe2(rgmii_axis_tdata),            // input wire [63:0]  probe4 
-// 	.probe3(rgmii_axis_tlast),               // input wire [0:0]  probe5 
-// 	.probe4(rgmii_axis_tkeep),          // input wire [7:0]  probe6 
-// 	// .probe5(rgmii_axis_tready),     // input wire [0:0]  probe7	
-// 	.probe5(tx_clk_out)             // input wire [0:0]  probe7	
-// );
+    .probe0(gmii_rx_clk),         // input wire [63:0]  probe0  
+    .probe1(gmii_rx_dv),        // input wire [7:0]  probe1 
+    .probe2(gmii_rxd),        // input wire [0:0]  probe2 
 
+    .probe3(gmii_tx_clk),        // input wire [0:0]  probe3 
+    .probe4(gmii_tx_en),        // input wire [0:0]  probe4 
+    .probe5(gmii_txd)               // input wire [0:0]  probe5 
+
+    // .probe6(sfp_axis_tkeep),         // input wire [7:0]  probe6 
+    // .probe7(sfp_axis_tvalid),        // input wire [0:0]  probe7
+    // .probe8(sfp_axis_tlast),       // input wire [0:0]  probe7
+
+    // .probe9(gmii_tx_clk),        // input wire [0:0]  probe7
+    // .probe10(gmii_tx_en),        // input wire [0:0]  probe7
+    // .probe11(gmii_txd)        // input wire [7:0]  probe7
+);
 
 // PHY复位和SFP配置
 // assign eth_rst_n = sys_rst_n;
@@ -162,8 +163,8 @@ gmii_to_axi u_gmii_to_axi(
     .axis_tdata     (rgmii_axis_tdata),
     .axis_tlast     (rgmii_axis_tlast),
     .axis_tkeep     (rgmii_axis_tkeep),
-    .axis_tready    (rgmii_axis_tready),
-   .clk_ila        (clk_ila)         // ILA时钟62.5MHz
+    .axis_tready    (rgmii_axis_tready)
+//    .clk_ila        (clk_ila)         // ILA时钟62.5MHz
 );
 
 // AXI转GMII
@@ -234,15 +235,15 @@ xxv_ethernet_0 u_xxv_ethernet_0(
     .ctl_rx_check_preamble_0          (1'b0), // 不检查前导码(7个0x55)
     .ctl_rx_check_sfd_0               (1'b0), // 不检查帧起始定界符(0xD5)
     .ctl_rx_force_resync_0            (1'b0), // input wire ctl_rx_force_resync_0
-    .ctl_rx_delete_fcs_0              (1'b1), // // 删除接收数据的FCS字段
+    .ctl_rx_delete_fcs_0              (1'b0), // // 删除接收数据的FCS字段
     .ctl_rx_ignore_fcs_0              (1'b1), // // 忽略FCS检查
     .ctl_rx_max_packet_len_0          (15'd9600), // input wire [14 : 0] ctl_rx_max_packet_len_0
-    .ctl_rx_min_packet_len_0          (15'd64 ),  // input wire [7 : 0] ctl_rx_min_packet_len_0
+    .ctl_rx_min_packet_len_0          (15'd8 ),  // input wire [7 : 0] ctl_rx_min_packet_len_0
     .ctl_rx_process_lfi_0             (1'b0), // input wire ctl_rx_process_lfi_0
     .ctl_rx_test_pattern_0            (1'b0), // input wire ctl_rx_test_pattern_0
     .ctl_rx_data_pattern_select_0     (1'b0), // input wire ctl_rx_data_pattern_select_0
     .ctl_rx_test_pattern_enable_0     (1'b0), // input wire ctl_rx_test_pattern_enable_0
-    .ctl_rx_custom_preamble_enable_0  (1'b0), // input wire ctl_rx_custom_preamble_enable_0
+   .ctl_rx_custom_preamble_enable_0  (1'b0), // input wire ctl_rx_custom_preamble_enable_0
 
     //AXI4?Stream 接口 - TX 路径控制信号和状态信号
     .ctl_tx_enable_0                  (1'b1),     // input wire ctl_tx_enable_0
@@ -258,8 +259,8 @@ xxv_ethernet_0 u_xxv_ethernet_0(
     .ctl_tx_data_pattern_select_0     (1'b0),     // input wire ctl_tx_data_pattern_select_0
     .ctl_tx_test_pattern_seed_a_0     (1'b0),     // input wire [57 : 0] ctl_tx_test_pattern_seed_a_0
     .ctl_tx_test_pattern_seed_b_0     (1'b0),     // input wire [57 : 0] ctl_tx_test_pattern_seed_b_0
-    .ctl_tx_ipg_value_0               (4'd12),    // input wire [3 : 0] ctl_tx_ipg_value_0
+   .ctl_tx_ipg_value_0               (4'd8),    // input wire [3 : 0] ctl_tx_ipg_value_0
     
-    .ctl_tx_custom_preamble_enable_0  (1'b0)     // input wire ctl_tx_custom_preamble_enable_0
+   .ctl_tx_custom_preamble_enable_0  (1'b0)     // input wire ctl_tx_custom_preamble_enable_0
 );
 endmodule
